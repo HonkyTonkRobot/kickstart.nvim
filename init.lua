@@ -124,6 +124,12 @@ vim.opt.breakindent = true
 -- Save undo history
 vim.opt.undofile = true
 
+-- Enable spell checking
+vim.opt.spell = true
+vim.opt.spelllang = { 'en_us' }
+-- TODO: Figure out why the below line is not working
+vim.opt.completeopt = { 'menu', 'menuone', 'noselect' }
+
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
@@ -253,6 +259,13 @@ require('lazy').setup({
         changedelete = { text = '~' },
       },
     },
+  },
+
+  {
+    'maarutan/lorem.nvim',
+    config = function()
+      require('lorem').setup()
+    end,
   },
 
   -- NOTE: Plugins can also be configured to run Lua code when they are loaded.
