@@ -37,3 +37,15 @@ vim.keymap.set("n", "<C-h>", "<C-w><C-h>", { desc = "Move focus to the left wind
 vim.keymap.set("n", "<C-l>", "<C-w><C-l>", { desc = "Move focus to the right window" })
 vim.keymap.set("n", "<C-j>", "<C-w><C-j>", { desc = "Move focus to the lower window" })
 vim.keymap.set("n", "<C-k>", "<C-w><C-k>", { desc = "Move focus to the upper window" })
+
+-- Function to open Glow
+local function open_glow()
+    local file = vim.fn.expand("%:p") -- Get the current file path
+    vim.cmd("!glow " .. file) -- Run Glow with the current file
+end
+
+-- Create a command to open Glow
+vim.api.nvim_create_user_command("Glow", open_glow, {})
+
+-- Optional: Create a key mapping to quickly open Glow
+vim.api.nvim_set_keymap("n", "<leader>g", ":Glow<CR>", { noremap = true, silent = true })
