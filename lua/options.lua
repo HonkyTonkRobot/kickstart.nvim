@@ -15,7 +15,7 @@ opt.autoindent = true                  -- Enable automatic indentation
 opt.smartindent = true                 -- Enable smart indentation
 -- opt.insert_final_newline = true      -- Remove or comment out this line
 
--- Trim trailing whitespace on save for all file types
+-- Trim trailing whitGespace on save for all file types
 vim.cmd [[
   autocmd BufWritePre * :%s/\s\+$//e
 ]]
@@ -84,3 +84,5 @@ opt.inccommand = 'split'
 
 -- Show which line your cursor
 
+-- Set which line starts page scrolling
+opt.scrolloff = 8
