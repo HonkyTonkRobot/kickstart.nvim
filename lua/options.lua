@@ -25,6 +25,10 @@ vim.cmd [[
   autocmd BufWritePre *.md :let b:trim_whitespace = 0
 ]]
 
+-- Enable line wrapping for LSP diagnostics
+vim.opt.wrap = true
+vim.opt.linebreak = true
+
 -- Make line numbers default
 opt.number = true
 -- You can also add relative line numbers, to help with jumping.
