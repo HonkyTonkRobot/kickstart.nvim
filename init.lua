@@ -132,6 +132,15 @@ end
 vim.keymap.set("n", "<C-e>", function() toggle_telescope(harpoon:list()) end,
     { desc = "Open harpoon window" })
 
+-- render - markdown commands
+require('render-markdown').enable()
+require('render-markdown').disable()
+
+-- render-markdown Completion
+require('render-markdown').setup({
+    completions = { lsp = { enabled = true } },
+})
+
 -- Function to open Glow
 local function open_glow()
     local file = vim.fn.expand("%:p") -- Get the current file path
