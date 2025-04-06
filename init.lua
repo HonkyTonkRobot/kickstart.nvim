@@ -139,6 +139,7 @@ require('render-markdown').disable()
 -- render-markdown Completion
 require('render-markdown').setup({
     completions = { lsp = { enabled = true } },
+  render_html = true,
 })
 
 -- Function to open Glow
