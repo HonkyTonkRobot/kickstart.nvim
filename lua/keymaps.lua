@@ -49,3 +49,7 @@ vim.api.nvim_create_user_command("Glow", open_glow, {})
 
 -- Optional: Create a key mapping to quickly open Glow
 vim.api.nvim_set_keymap("n", "<leader>g", ":Glow<CR>", { noremap = true, silent = true })
+
+-- Aider AI assitant keymaps
+vim.api.nvim_set_keymap('n', '<leader>Ao', ':AiderOpen<CR>', {noremap = true, silent = true})
+vim.api.nvim_set_keymap('n', '<leader>Am', ':AiderAddModifiedFiles<CR>', {noremap = true, silent = true})

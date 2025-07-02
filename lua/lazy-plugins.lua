@@ -564,14 +564,14 @@ group_index = 0,
 })
 end,
 },
-{
-"norcalli/nvim-colorizer.lua",
-config = function()
-require("colorizer").setup({
-"*", -- Apply to all file types
-})
-end,
-},
+-- {
+-- "norcalli/nvim-colorizer.lua",
+-- config = function()
+-- require("colorizer").setup({
+-- "*", -- Apply to all file types
+-- })
+-- end,
+-- },
 
 {
 -- Change the name of the colorscheme plugin below, and then
@@ -676,6 +676,15 @@ indent = { enable = true, disable = { "ruby" } },
     "ThePrimeagen/harpoon",
     branch = "harpoon2",
     dependencies = { "nvim-lua/plenary.nvim" }
+},{
+  "joshuavial/aider.nvim",
+  opts = {
+    -- your configuration comes here
+    -- if you don't want to use the default settings
+    auto_manage_context = true, -- automatically manage buffer context
+    default_bindings = true,    -- use default <leader>A keybindings
+    debug = false,              -- enable debug logging
+  },
 },
 -- The following comments only work if you have downloaded the kickstart repo, not just copy pasted the
 -- init.lua. If you want these files, they are in the repository, so you can just download them and
@@ -725,10 +734,10 @@ lazy = "💤 ",
 },
 })
 require("ibl").setup()
-require("colorizer").setup({
-"*",                      -- Highlight all files, but customize some others.
-css = { rgb_fn = true },  -- Enable parsing rgb(...) functions in css.
-html = { names = false }, -- Disable parsing "names" like Blue or Gray
-})
+-- require("colorizer").setup({
+-- "*",                      -- Highlight all files, but customize some others.
+-- css = { rgb_fn = true },  -- Enable parsing rgb(...) functions in css.
+-- html = { names = false }, -- Disable parsing "names" like Blue or Gray
+-- })
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
