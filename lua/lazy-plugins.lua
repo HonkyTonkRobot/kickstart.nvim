@@ -54,11 +54,11 @@ require("lazy").setup({
 -- Use `opts = {}` to force a plugin to be loaded.
 opts = {
 signs = {
-add = { text = "+" },
-change = { text = "~" },
-delete = { text = "_" },
-topdelete = { text = "‾" },
-changedelete = { text = "~" },
+-- add = { text = "+" },
+-- change = { text = "~" },
+-- delete = { text = "_" },
+-- topdelete = { text = "‾" },
+-- changedelete = { text = "~" },
 },
 },
 },
