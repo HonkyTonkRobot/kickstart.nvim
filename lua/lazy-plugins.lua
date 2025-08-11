@@ -1,16 +1,11 @@
 -- [[ Configure and install plugins ]]
 
--- NOTE: Here is where you install your plugins.
+-- NOTE: Plugins can be added with a github link 'owner/repo'
 require("lazy").setup({
-  -- NOTE: Plugins can be added with a github link 'owner/repo'
-  'tpope/vim-sleuth',          -- Detect tabstop and shiftwidth automatically
   'subnut/nvim-ghost.nvim',
   'NMAC427/guess-indent.nvim', -- Detect tabstop and shiftwidth automatically
-  -- NOTE: Plugins with additional config
   {
     'MeanderingProgrammer/render-markdown.nvim',
-    -- dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.nvim' },       -- if you use the mini.nvim suite
-    -- dependencies = { 'nvim-treesitter/nvim-treesitter', 'echasnovski/mini.icons' },      -- if you use standalone mini plugins
     dependencies = { 'nvim-treesitter/nvim-treesitter', 'nvim-tree/nvim-web-devicons' }, -- if you prefer nvim-web-devicons
     ---@module 'render-markdown'
     ---@type render.md.UserConfig
@@ -23,9 +18,8 @@ require("lazy").setup({
     ---@type ibl.config
     opts = {},
   },
-  { -- Adds git related signs to the gutter, as well as utilities for managing changes
+  {
     "lewis6991/gitsigns.nvim",
-    -- Use `opts = {}` to force a plugin to be loaded.
     opts = {
       on_attach = function(bufnr)
         local gitsigns = require 'gitsigns'
@@ -79,7 +73,6 @@ require("lazy").setup({
       end,
     },
   },
-
   {
     "maarutan/lorem.nvim",
     config = function()
