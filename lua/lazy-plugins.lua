@@ -19,7 +19,111 @@ require("lazy").setup({
     opts = {},
   },
   {
-    "sindrets/diffview.nvim"
+    "sindrets/diffview.nvim",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "nvim-tree/nvim-web-devicons", -- optional, for icons
+    },
+    cmd = { "DiffviewOpen", "DiffviewClose", "DiffviewFileHistory" },
+    keys = {
+      -- Close Diff View
+      { "<leader>gx",  "<cmd>DiffviewClose<cr><cmd>DiffviewClose<cr>",            desc = "[G]it Diff Close [x]" },
+      -- Git Diff
+      { "<leader>gd ", "<cmd>DiffviewClose<cr><cmd>DiffviewOpen<cr>",             desc = "[G]it [D]iff <Space>" },
+      { "<leader>gds", "<cmd>DiffviewClose<cr><cmd>DiffviewOpen --cached<cr>",    desc = "[G]it [D]iff [S]taged" },
+      { "<leader>gdh", "<cmd>DiffviewClose<cr><cmd>DiffviewOpen HEAD<cr>",        desc = "[G]it [D]iff [H]ead" },
+      { "<leader>gdm", "<cmd>DiffviewClose<cr><cmd>DiffviewOpen main...HEAD<cr>", desc = "[G]it [D]iff [M]ain" },
+      -- Git History
+      { "<leader>gh",  "<cmd>DiffviewClose<cr><cmd>DiffviewFileHistory %<cr>",    desc = "[G]it [h]istory Current File" },
+      { "<leader>gH",  "<cmd>DiffviewClose<cr><cmd>DiffviewFileHistory<cr>",      desc = "[G]it [H]istory" },
+    },
+    opts = function()
+      local actions = require("diffview.actions")
+      return {
+        diff_binaries = false,
+        enhanced_diff_hl = false,
+        git_cmd = { "git" },
+        hg_cmd = { "hg" },
+        use_icons = true,
+        show_help_hints = true,
+        watch_index = true,
+        icons = { folder_closed = "", folder_open = "" },
+        signs = { fold_closed = "", fold_open = "", done = "✓" },
+
+        view = {
+          default = { layout = "diff2_horizontal", disable_diagnostics = false, winbar_info = false },
+          merge_tool = { layout = "diff3_horizontal", disable_diagnostics = true, winbar_info = true },
+          file_history = { layout = "diff2_horizontal", disable_diagnostics = false, winbar_info = false },
+        },
+
+        file_panel = {
+          listing_style = "tree",
+          tree_options = { flatten_dirs = true, folder_statuses = "only_folded" },
+          win_config = { position = "left", width = 35, win_opts = {} },
+        },
+
+        file_history_panel = {
+          log_options = {
+            git = {
+              single_file = { diff_merges = "combined" },
+              multi_file = { diff_merges = "first-parent" },
+            },
+            hg = { single_file = {}, multi_file = {} },
+          },
+          win_config = { position = "bottom", height = 16, win_opts = {} },
+        },
+
+        commit_log_panel = { win_config = {} },
+        default_args = { DiffviewOpen = {}, DiffviewFileHistory = {} },
+        hooks = {},
+
+        -- === paste your big keymaps table here unchanged ===
+        keymaps = {
+          disable_defaults = false,
+          view = {
+            { "n", "<tab>",      actions.select_next_entry,             { desc = "Open the diff for the next file" } },
+            { "n", "<s-tab>",    actions.select_prev_entry,             { desc = "Open the diff for the previous file" } },
+            { "n", "[F",         actions.select_first_entry,            { desc = "Open the first file" } },
+            { "n", "]F",         actions.select_last_entry,             { desc = "Open the last file" } },
+            { "n", "gf",         actions.goto_file_edit,                { desc = "Open the file in the previous tabpage" } },
+            { "n", "<C-w><C-f>", actions.goto_file_split,               { desc = "Open the file in a new split" } },
+            { "n", "<C-w>gf",    actions.goto_file_tab,                 { desc = "Open the file in a new tabpage" } },
+            { "n", "<leader>e",  actions.focus_files,                   { desc = "[T]oggle [f]ocus file panel" } },
+            { "n", "<leader>b",  actions.toggle_files,                  { desc = "[T]oggle Fil[e] panel" } },
+            { "n", "g<C-x>",     actions.cycle_layout,                  { desc = "Cycle layouts" } },
+            { "n", "[x",         actions.prev_conflict,                 { desc = "Prev conflict" } },
+            { "n", "]x",         actions.next_conflict,                 { desc = "Next conflict" } },
+            { "n", "<leader>co", actions.conflict_choose("ours"),       { desc = "Choose OURS" } },
+            { "n", "<leader>ct", actions.conflict_choose("theirs"),     { desc = "Choose THEIRS" } },
+            { "n", "<leader>cb", actions.conflict_choose("base"),       { desc = "Choose BASE" } },
+            { "n", "<leader>ca", actions.conflict_choose("all"),        { desc = "Choose ALL" } },
+            { "n", "dx",         actions.conflict_choose("none"),       { desc = "Delete conflict region" } },
+            { "n", "<leader>cO", actions.conflict_choose_all("ours"),   { desc = "Choose OURS (file)" } },
+            { "n", "<leader>cT", actions.conflict_choose_all("theirs"), { desc = "Choose THEIRS (file)" } },
+            { "n", "<leader>cB", actions.conflict_choose_all("base"),   { desc = "Choose BASE (file)" } },
+            { "n", "<leader>cA", actions.conflict_choose_all("all"),    { desc = "Choose ALL (file)" } },
+            { "n", "dX",         actions.conflict_choose_all("none"),   { desc = "Delete conflict region (file)" } },
+          },
+          diff1 = { { "n", "g?", actions.help({ "view", "diff1" }), { desc = "Help" } }, },
+          diff2 = { { "n", "g?", actions.help({ "view", "diff2" }), { desc = "Help" } }, },
+          diff3 = {
+            { { "n", "x" }, "2do", actions.diffget("ours"),           { desc = "Get hunk from OURS" } },
+            { { "n", "x" }, "3do", actions.diffget("theirs"),         { desc = "Get hunk from THEIRS" } },
+            { "n",          "g?",  actions.help({ "view", "diff3" }), { desc = "Help" } },
+          },
+          diff4 = {
+            { { "n", "x" }, "1do", actions.diffget("base"),           { desc = "Get hunk from BASE" } },
+            { { "n", "x" }, "2do", actions.diffget("ours"),           { desc = "Get hunk from OURS" } },
+            { { "n", "x" }, "3do", actions.diffget("theirs"),         { desc = "Get hunk from THEIRS" } },
+            { "n",          "g?",  actions.help({ "view", "diff4" }), { desc = "Help" } },
+          },
+          -- keep your file_panel / file_history_panel / option_panel / help_panel blocks here exactly as you had them
+        },
+      }
+    end,
+    config = function(_, opts)
+      require("diffview").setup(opts)
+    end,
   },
   {
     "NeogitOrg/neogit",
@@ -28,7 +132,6 @@ require("lazy").setup({
       "sindrets/diffview.nvim",
       "nvim-telescope/telescope.nvim",
     },
-    -- optional: add a keymap to open Neogit
     keys = {
       { "<leader>gg", function() require("neogit").open() end, desc = "Open Neogit" },
     },
@@ -422,17 +525,17 @@ require("lazy").setup({
           gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' }
         end, { desc = 'git [r]eset hunk' })
         -- normal mode
-        map('n', '<leader>gs', gitsigns.stage_hunk, { desc = 'git [s]tage hunk' })
-        map('n', '<leader>gr', gitsigns.reset_hunk, { desc = 'git [r]eset hunk' })
-        map('n', '<leader>gS', gitsigns.stage_buffer, { desc = 'git [S]tage buffer' })
-        map('n', '<leader>gu', gitsigns.stage_hunk, { desc = 'git [u]ndo stage hunk' })
-        map('n', '<leader>gR', gitsigns.reset_buffer, { desc = 'git [R]eset buffer' })
-        map('n', '<leader>gp', gitsigns.preview_hunk, { desc = 'git [p]review hunk' })
-        map('n', '<leader>gb', gitsigns.blame_line, { desc = 'git [b]lame line' })
-        map('n', '<leader>gd', gitsigns.diffthis, { desc = 'git [d]iff against index' })
-        map('n', '<leader>gD', function()
+        map('n', '<leader>gs', gitsigns.stage_hunk, { desc = '[G]it [s]tage hunk' })
+        map('n', '<leader>gr', gitsigns.reset_hunk, { desc = '[G]it [r]eset hunk' })
+        map('n', '<leader>gS', gitsigns.stage_buffer, { desc = '[G]it [S]tage buffer' })
+        map('n', '<leader>gu', gitsigns.stage_hunk, { desc = '[G]it [u]ndo stage hunk' })
+        map('n', '<leader>gR', gitsigns.reset_buffer, { desc = '[G]it [R]eset buffer' })
+        map('n', '<leader>gv', gitsigns.preview_hunk, { desc = '[G]it [v]iew hunk' })
+        map('n', '<leader>gb', gitsigns.blame_line, { desc = '[G]it [b]lame line' })
+        map('n', '<leader>gdl', gitsigns.diffthis, { desc = '[G]it [d]iff against index' })
+        map('n', '<leader>gdt', function()
           gitsigns.diffthis '@'
-        end, { desc = 'git [D]iff against last commit' })
+        end, { desc = '[G]it [D]iff against last commit' })
         -- Toggles
         map('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[T]oggle git show [b]lame line' })
         map('n', '<leader>tD', gitsigns.preview_hunk_inline, { desc = '[T]oggle git show [D]eleted' })
@@ -492,13 +595,14 @@ require("lazy").setup({
 
       -- Document existing key chains
       spec = {
-        { "<leader>c", group = "[C]ode",     mode = { "n", "x" } },
-        { "<leader>d", group = "[D]ocument" },
-        { "<leader>r", group = "[R]ename" },
-        { "<leader>s", group = "[S]earch" },
-        { "<leader>w", group = "[W]orkspace" },
-        { "<leader>t", group = "[T]oggle" },
-        { "<leader>g", group = "[G]it",      mode = { "n", "v" } },
+        { "<leader>c",  group = "[C]ode",       mode = { "n", "x" } },
+        { "<leader>d",  group = "[D]ocument" },
+        { "<leader>r",  group = "[R]ename" },
+        { "<leader>s",  group = "[S]earch" },
+        { "<leader>w",  group = "[W]orkspace" },
+        { "<leader>t",  group = "[T]oggle" },
+        { "<leader>g",  group = "[G]it",        mode = { "n", "v" } },
+        { "<leader>gd", group = "[G]it [d]iff", mode = { "n", "v" } },
       },
     },
   },
