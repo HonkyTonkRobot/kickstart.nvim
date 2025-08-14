@@ -18,13 +18,6 @@ require("lazy").setup({
     ---@type ibl.config
     opts = {},
   },
-  {
-    "maarutan/lorem.nvim",
-    config = function()
-      require("lorem").setup()
-    end,
-  },
-
   {                     -- Useful plugin to show you pending keybinds.
     "folke/which-key.nvim",
     event = "VimEnter", -- Sets the loading event to 'VimEnter'
