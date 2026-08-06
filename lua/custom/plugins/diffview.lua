@@ -21,7 +21,7 @@ return {
     local actions = require("diffview.actions")
     return {
       diff_binaries = false,
-      enhanced_diff_hl = false,
+      enhanced_diff_hl = true,
       git_cmd = { "git" },
       hg_cmd = { "hg" },
       use_icons = true,
@@ -67,7 +67,7 @@ return {
           { "n", "]F",         actions.select_last_entry,             { desc = "Open the last file" } },
           { "n", "gf",         actions.goto_file_edit,                { desc = "Open the file in the previous tabpage" } },
           { "n", "<C-w><C-f>", actions.goto_file_split,               { desc = "Open the file in a new split" } },
-          { "n", "<C-w>gf",    actions.goto_file_tab,                 { desc = "Open the file in a new tabpage" } },
+          { "n", "<leader>gf", actions.goto_file_tab,                 { desc = "Open the file in a new tabpage" } },
           { "n", "<leader>e",  actions.focus_files,                   { desc = "[T]oggle [f]ocus file panel" } },
           { "n", "<leader>b",  actions.toggle_files,                  { desc = "[T]oggle Fil[e] panel" } },
           { "n", "g<C-x>",     actions.cycle_layout,                  { desc = "Cycle layouts" } },
