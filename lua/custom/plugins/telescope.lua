@@ -31,16 +31,39 @@ return { -- Fuzzy Finder (files, lsp, etc)
 
     -- [[ Configure Telescope ]]
     -- See `:help telescope` and `:help telescope.setup()`
+    -- Search-tool policy: surface gitignored-but-wanted paths (.env, .docs/),
+    -- and filter noise via ~/.config/fd/ignore instead of via .gitignore.
+    --
+    -- `--no-ignore-vcs` is deliberate and is NOT the same as telescope's
+    -- `no_ignore = true`, which maps to fd's `--no-ignore` and would disable
+    -- the global ignore file as well — that pulls node_modules back in
+    -- (158,586 files vs 2,451 in lunar-ledger).
+    --
+    -- fd reads ~/.config/fd/ignore on its own; rg does not, so it is passed
+    -- explicitly. Set here rather than relying on RIPGREP_CONFIG_PATH, which
+    -- is only inherited when nvim is launched from the shell.
+    local global_ignore = vim.fn.expand("~/.config/fd/ignore")
+
     require("telescope").setup({
-      -- You can put your default mappings / updates / etc. in here
-      --  All the info you're looking for is in `:help telescope.setup()`
-      --
-      -- defaults = {
-      --   mappings = {
-      --     i = { ['<c-enter>'] = 'to_fuzzy_refine' },
-      --   },
-      -- },
-      -- pickers = {}
+      defaults = {
+        vimgrep_arguments = {
+          "rg",
+          "--color=never",
+          "--no-heading",
+          "--with-filename",
+          "--line-number",
+          "--column",
+          "--smart-case",
+          "--hidden",
+          "--no-ignore-vcs",
+          "--ignore-file=" .. global_ignore,
+        },
+      },
+      pickers = {
+        find_files = {
+          find_command = { "fdfind", "--type", "f", "--hidden", "--no-ignore-vcs" },
+        },
+      },
       extensions = {
         ["ui-select"] = {
           require("telescope.themes").get_dropdown(),
