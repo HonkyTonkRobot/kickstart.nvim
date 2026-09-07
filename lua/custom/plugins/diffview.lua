@@ -1,5 +1,5 @@
 return {
-  "sindrets/diffview.nvim",
+  "dlyongemallo/diffview.nvim",
   dependencies = {
     "nvim-lua/plenary.nvim",
     "nvim-tree/nvim-web-devicons", -- optional, for icons
@@ -55,7 +55,18 @@ return {
 
       commit_log_panel = { win_config = {} },
       default_args = { DiffviewOpen = {}, DiffviewFileHistory = {} },
-      hooks = {},
+      hooks = {
+        -- Global `wrap = true` (options.lua) makes scrollbind sync the diff panes
+        -- by screen lines instead of buffer lines, so the two sides drift apart.
+        -- `:diffsplit` normally resets wrap, but diffview sets `vim.wo.diff`
+        -- directly and skips that, so turn it off per diff buffer here.
+        diff_buf_read = function(_)
+          vim.opt_local.wrap = false
+          vim.opt_local.linebreak = false
+          vim.opt_local.list = false
+          vim.opt_local.spell = false
+        end,
+      },
 
       -- === paste your big keymaps table here unchanged ===
       keymaps = {
