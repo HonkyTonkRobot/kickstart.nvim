@@ -18,7 +18,8 @@ return { -- Autoformat
       -- Disable "format_on_save lsp_fallback" for languages that don't
       -- have a well standardized coding style. You can add additional
       -- languages here or re-enable it for the disabled ones.
-      local disable_filetypes = { c = true, cpp = true }
+      -- markdown: trailing whitespace is a significant line break, don't strip it
+      local disable_filetypes = { c = true, cpp = true, markdown = true }
       local lsp_format_opt
       if disable_filetypes[vim.bo[bufnr].filetype] then
         return nil
@@ -30,6 +31,10 @@ return { -- Autoformat
       end
     end,
     formatters_by_ft = {
+      -- Trim trailing whitespace on save for every filetype except those in
+      -- `disable_filetypes` above. Replaces the old `:%s/\s\+$//e` autocmd in
+      -- options.lua, which clobbered the search register and moved the cursor.
+      ["*"] = { "trim_whitespace" },
       -- lua = { "stylua" }, -- This gives terrible tabs
       -- Conform can also run multiple formatters sequentially
       -- python = { "isort", "black" },

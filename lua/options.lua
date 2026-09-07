@@ -11,15 +11,8 @@ vim.o.autoindent = true                  -- Enable automatic indentation
 vim.o.smartindent = true                 -- Enable smart indentation
 -- opt.insert_final_newline = true      -- Remove or comment out this line
 
--- Trim trailing whitGespace on save for all file types
-vim.cmd [[
-  autocmd BufWritePre * :%s/\s\+$//e
-]]
-
--- Do not trim trailing whitespace for Markdown files
-vim.cmd [[
-  autocmd BufWritePre *.md :let b:trim_whitespace = 0
-]]
+-- Trailing whitespace is trimmed on save by conform.nvim
+-- (`formatters_by_ft["*"] = { "trim_whitespace" }`), which skips markdown.
 
 -- Enable line wrapping for LSP diagnostics
 vim.o.wrap = true
@@ -51,9 +44,16 @@ vim.o.breakindent = true
 -- Save undo history
 vim.o.undofile = true
 
--- Enable spell checking
-vim.o.spell = true
-vim.opt.spelllang = { 'en_us' }
+-- Spell checking: prose only, not code/panels/diffs
+vim.api.nvim_create_autocmd('FileType', {
+  desc = 'Enable spell checking for prose filetypes',
+  group = vim.api.nvim_create_augroup('spell-prose', { clear = true }),
+  pattern = { 'markdown', 'gitcommit', 'text' },
+  callback = function()
+    vim.opt_local.spell = true
+    vim.opt_local.spelllang = { 'en_us' }
+  end,
+})
 -- TODO: Figure out why the below line is not working
 vim.opt.completeopt = { 'menu', 'menuone', 'noselect' }
 
