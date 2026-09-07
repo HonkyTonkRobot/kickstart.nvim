@@ -36,8 +36,9 @@ return { -- Autocompletion
     },
 
     snippets = { preset = 'luasnip' },
-    -- TODO: [fast] rust implementation
-    fuzzy = { implementation = 'lua' },
+    -- Rust matcher via pre-built binary (x86_64-unknown-linux-gnu is supported);
+    -- falls back to the Lua implementation with a warning if it can't be fetched.
+    fuzzy = { implementation = 'prefer_rust_with_warning' },
     signature = { enabled = true },
   },
 }
