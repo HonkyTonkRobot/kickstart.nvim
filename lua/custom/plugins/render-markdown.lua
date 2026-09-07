@@ -5,6 +5,10 @@ return {
   ---@type render.md.UserConfig
   ft = { 'markdown' },
   opts = {
+    -- Tables are rendered by markdown-table-wrap.nvim, which can wrap long
+    -- cells to the viewport. This is that plugin's documented coexistence
+    -- setting; everything else here still renders normally.
+    pipe_table = { enabled = false },
     completions = { lsp = { enabled = true } },
   },
   keys = {
