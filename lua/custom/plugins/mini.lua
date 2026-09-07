@@ -1,5 +1,5 @@
 return { -- Collection of various small independent plugins/modules
-  "echasnovski/mini.nvim",
+  "nvim-mini/mini.nvim",
   config = function()
     -- Better Around/Inside textobjects
     --
@@ -31,7 +31,12 @@ return { -- Collection of various small independent plugins/modules
       return "%2l:%-2v"
     end
 
+    -- Current-scope indent line. Replaces indent-blankline, whose refresh path
+    -- (winsaveview -> treesitter conceal_line -> get_url) crashed on nvim 0.13-dev.
+    -- NOTE: draws the CURRENT scope only, not a guide at every indent level.
+    require("mini.indentscope").setup()
+
     -- ... and there is more!
-    --  Check out: https://github.com/echasnovski/mini.nvim
+    --  Check out: https://github.com/nvim-mini/mini.nvim
   end,
 }
