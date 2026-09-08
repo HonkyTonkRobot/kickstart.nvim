@@ -12,8 +12,10 @@
 --   arrows        move by cell / row when on a table line in either mode
 --   Enter         on a table row: edit the cell in a float (Enter or :q saves and exits, :q! discards)
 --   <leader>me    same as Enter
---   <leader>mf    realign the raw table      <leader>mr / mR   add / delete row
+--   <leader>mn    new table below: N<leader>mn for N '(empty)' columns, or prompt for names
+--   <leader>mf    realign the raw table      <leader>mr / mR   add / delete row (count = how many)
 --   <leader>mc / mC  add / delete column     <leader>tm        toggle all rendering
+--   counts on hjkl jump cells / rows on a locked table
 local function wt()
   return require('custom.wrapped_tables')
 end
@@ -65,10 +67,11 @@ return {
     { '<CR>', function() wt().enter() end, desc = 'Edit table cell in a float / plain Enter', ft = 'markdown' },
     -- <leader>m = [M]arkdown table editing
     { '<leader>me', function() wt().edit_cell() end, desc = '[E]dit cell in a float (:q save, :q! discard)', ft = 'markdown' },
+    { '<leader>mn', function() wt().new_table() end, desc = '[N]ew table below (count = columns, else prompt)', ft = 'markdown' },
     { '<leader>mf', function() wt().format() end, desc = '[F]ormat / realign raw table', ft = 'markdown' },
-    { '<leader>mr', function() wt().add_row() end, desc = 'Add [r]ow below', ft = 'markdown' },
+    { '<leader>mr', function() wt().add_row() end, desc = 'Add [r]ow below (count = how many)', ft = 'markdown' },
     { '<leader>mR', function() wt().delete_row() end, desc = 'Delete [R]ow', ft = 'markdown' },
-    { '<leader>mc', function() wt().add_column() end, desc = 'Add [c]olumn after', ft = 'markdown' },
+    { '<leader>mc', function() wt().add_column() end, desc = 'Add [c]olumn after (count = how many)', ft = 'markdown' },
     { '<leader>mC', function() wt().delete_column() end, desc = 'Delete [C]olumn', ft = 'markdown' },
     -- cell / row navigation on arrows, normal mode, markdown only
     { '<Right>', function() wt().on_table_or(wt().next_cell, 'l')() end, desc = 'Next table cell', ft = 'markdown' },

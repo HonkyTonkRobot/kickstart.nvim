@@ -21,8 +21,9 @@
 -- keys move by cell/row on a table in both modes.
 --
 -- Also here: the cell-level editing commands the arrow keys, hjkl and <leader>m bind to
--- (next/prev cell and row, edit cell in a float, add/delete row and column, format),
--- so no separate table plugin is needed.
+-- (next/prev cell and row, edit cell in a float, new table, add/delete row and column,
+-- format), so no separate table plugin is needed. Counts work: 3l jumps three cells on a
+-- locked table, 4<leader>mr adds four rows, 3<leader>mn makes a three-column table.
 
 local M = {}
 
@@ -37,11 +38,17 @@ M.opts = {
     code = "RenderMarkdownCodeInline",
     bold = "Bold",
     cursor_cell = "WrappedTableCursorCell",
+    placeholder = "Comment",
   },
 }
 
 -- tables stay rendered under the cursor; <leader>tt flips this for the session
 M.locked = true
+
+-- Placeholder for a header cell with no name yet. Header cells cannot be left blank because
+-- tree-sitter-markdown drops the table body once a row has all-empty cells; the popup shows
+-- a placeholder cell as blank and writes the placeholder back if a header is saved empty.
+M.PLACEHOLDER = "(empty)"
 
 vim.api.nvim_set_hl(0, "WrappedTableCursorCell", { link = "Visual", default = true })
 -- fully transparent cursor, used while in normal mode on a locked table row so only the
@@ -176,6 +183,9 @@ function M.clean(text)
     end
   end
   text = text:gsub("\\|", "|")
+  if text == M.PLACEHOLDER then
+    return { { text, hl.placeholder } }
+  end
   -- review prefix at the start of the cell
   for _, kw in ipairs(M.opts.prefixes) do
     local rest = text:match("^" .. kw .. ":%s*(.*)$")
@@ -721,6 +731,9 @@ function M.edit_cell()
   local line = tbl.lines[row + 1]
   local i, cells, spans = cell_index(line, col)
   local text = cells[i]:gsub("\\|", "|")
+  if text == M.PLACEHOLDER then
+    text = ""
+  end
   local header = M.split_row(tbl.lines[tbl.header + 1]) or {}
   local id = (cells[1] or ""):match("%[([^%]]+)%]") or cells[1] or ""
   local title = (" %s · %s "):format(id, header[i] or ("col " .. i))
@@ -762,6 +775,9 @@ function M.edit_cell()
     end
     local new = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), " ")
     new = vim.trim(new):gsub("|", "\\|")
+    if new == "" and row == tbl.header then
+      new = M.PLACEHOLDER
+    end
     local cur = vim.api.nvim_buf_get_lines(src, row, row + 1, false)[1]
     if cur ~= line then
       return vim.notify("the row changed while the cell was open; not saved", vim.log.levels.ERROR)
@@ -808,7 +824,11 @@ function M.add_row()
     return false
   end
   local at = (row <= tbl.delim) and tbl.delim or row
-  vim.api.nvim_buf_set_lines(0, at + 1, at + 1, false, { "|" .. string.rep("  |", tbl.ncols) })
+  local rows = {}
+  for _ = 1, vim.v.count1 do -- 4<leader>mr adds four rows
+    rows[#rows + 1] = "|" .. string.rep("  |", tbl.ncols)
+  end
+  vim.api.nvim_buf_set_lines(0, at + 1, at + 1, false, rows)
   goto_cell(at + 1, 1)
 end
 
@@ -839,11 +859,67 @@ function M.add_column()
     return false
   end
   local i = cell_index(tbl.lines[row + 1], col) or tbl.ncols
+  local n = vim.v.count1 -- 2<leader>mc adds two columns
   map_columns(tbl, function(cells, r)
-    table.insert(cells, i + 1, r == tbl.delim and "---" or (r == tbl.header and "Col" or ""))
+    for _ = 1, n do
+      table.insert(cells, i + 1, r == tbl.delim and "---" or (r == tbl.header and M.PLACEHOLDER or ""))
+    end
     return cells
   end)
   goto_cell(row, i + 1)
+end
+
+---<leader>mn: insert a new table below the current line. With a count, that many columns
+---headed by the placeholder; otherwise prompt for comma-separated column names (a bare
+---number there works like a count). One empty body row. Cursor lands on the first header
+---cell when placeholders were used, else on the first body cell.
+function M.new_table()
+  local function build(headers, named)
+    local row = cursor()
+    local line = vim.api.nvim_buf_get_lines(0, row, row + 1, false)[1] or ""
+    local after = vim.api.nvim_buf_get_lines(0, row + 1, row + 2, false)[1]
+    local n = #headers
+    local lines = {}
+    if line:match("%S") then
+      lines[#lines + 1] = "" -- markdown wants a blank line before a table
+    end
+    local header_at = row + #lines + 1
+    lines[#lines + 1] = "| " .. table.concat(headers, " | ") .. " |"
+    lines[#lines + 1] = "|" .. string.rep("---|", n)
+    lines[#lines + 1] = "|" .. string.rep("  |", n)
+    if after and after:match("%S") then
+      lines[#lines + 1] = ""
+    end
+    vim.api.nvim_buf_set_lines(0, row + 1, row + 1, false, lines)
+    goto_cell(named and header_at + 2 or header_at, 1)
+  end
+  local function placeholders(n)
+    local h = {}
+    for _ = 1, n do
+      h[#h + 1] = M.PLACEHOLDER
+    end
+    return h
+  end
+  if vim.v.count > 0 then
+    return build(placeholders(vim.v.count), false)
+  end
+  vim.ui.input({ prompt = "Columns (names, comma separated, or a number): " }, function(input)
+    if not input or vim.trim(input) == "" then
+      return
+    end
+    local n = tonumber(vim.trim(input))
+    if n and n >= 1 then
+      return build(placeholders(math.floor(n)), false)
+    end
+    local headers = {}
+    for name in input:gmatch("[^,]+") do
+      name = vim.trim(name)
+      headers[#headers + 1] = name ~= "" and name:gsub("|", "\\|") or M.PLACEHOLDER
+    end
+    if #headers > 0 then
+      build(headers, true)
+    end
+  end)
 end
 
 function M.delete_column()
@@ -910,11 +986,14 @@ local HJKL = { h = "prev_cell", l = "next_cell", j = "next_row", k = "prev_row" 
 ---normal motion, counts preserved.
 function M.hjkl(key)
   return function()
-    if M.locked and vim.v.count == 0 then
-      local row = cursor()
-      if M.table_at(0, row) and M[HJKL[key]]() then
-        return
+    if M.locked and M.table_at(0, (cursor())) then
+      -- a count repeats the cell/row move and stops at the table edge
+      for _ = 1, vim.v.count1 do
+        if not M[HJKL[key]]() then
+          break
+        end
       end
+      return
     end
     plain(key)
   end
@@ -935,8 +1014,12 @@ function M.insert(key)
       local row, col = cursor()
       local tbl = M.table_at(0, row)
       if tbl and row ~= tbl.delim then
-        local i, _, spans = cell_index(tbl.lines[row + 1], col)
+        local i, cells, spans = cell_index(tbl.lines[row + 1], col)
         if i then
+          if cells[i] == M.PLACEHOLDER then
+            vim.api.nvim_buf_set_text(0, row, spans[i][1], row, spans[i][2], { "" })
+            spans[i][2] = spans[i][1]
+          end
           vim.api.nvim_win_set_cursor(0, { row + 1, key == "a" and spans[i][2] or spans[i][1] })
           vim.cmd.startinsert()
           return
