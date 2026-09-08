@@ -900,6 +900,18 @@ local function rerender(buf)
   end)
 end
 
+---Enter on a table row opens the cell float (and Enter inside it saves and exits); off a
+---table, Enter is the plain motion it always was.
+function M.enter()
+  local row = cursor()
+  local tbl = M.table_at(0, row)
+  if tbl and row ~= tbl.delim then
+    M.edit_cell()
+  else
+    plain("\r")
+  end
+end
+
 ---<leader>tt: flip between locked (tables always rendered) and hover (cursor row raw).
 function M.toggle_lock()
   M.locked = not M.locked
