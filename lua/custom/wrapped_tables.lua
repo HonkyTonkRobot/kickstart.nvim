@@ -758,7 +758,7 @@ function M.edit_cell()
     border = "rounded",
     title = title,
     title_pos = "center",
-    footer = " Enter exit · :q! discard ",
+    footer = " <Enter> exit · :q! discard ",
     footer_pos = "right",
   })
   vim.wo[win].wrap = true
