@@ -16,9 +16,10 @@ return {
       '<leader>tm',
       function()
         -- One key = raw markdown <-> pretty: flips render-markdown and the table
-        -- layer together. <leader>tt (markdown-table-wrap.lua) does tables only.
+        -- view (Reader or Inline, whichever preview_mode is set) together.
+        -- <leader>tt (markdown-table-wrap.lua) does tables only.
         require('render-markdown').toggle()
-        vim.cmd('MarkdownTableToggleInline')
+        vim.cmd('MarkdownTableTogglePreview')
       end,
       desc = '[T]oggle [M]arkdown rendering (headings + tables)',
       ft = 'markdown',
