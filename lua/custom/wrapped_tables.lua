@@ -710,6 +710,7 @@ function M.edit_cell()
     return vim.notify("not on a table cell", vim.log.levels.INFO)
   end
   local src = vim.api.nvim_get_current_buf()
+  local src_win = vim.api.nvim_get_current_win()
   local line = tbl.lines[row + 1]
   local i, cells, spans = cell_index(line, col)
   local text = cells[i]:gsub("\\|", "|")
@@ -755,10 +756,21 @@ function M.edit_cell()
     if cur ~= line then
       return vim.notify("the row changed while the cell was open; not saved", vim.log.levels.ERROR)
     end
-    -- replace everything between the pipes so the raw cell is always `| text |`
-    vim.api.nvim_buf_set_text(src, row, inner[i][1], row, inner[i][2], { " " .. new .. " " })
     vim.bo[buf].modified = false
     vim.api.nvim_win_close(win, true)
+    -- Write from the table's own window, after the float is gone: an API edit made while
+    -- another window is current records the undo cursor from a hidden window at line 1, so
+    -- `u` would jump to the top of the file. Replace everything between the pipes so the raw
+    -- cell is always `| text |`.
+    local function write()
+      vim.api.nvim_buf_set_text(src, row, inner[i][1], row, inner[i][2], { " " .. new .. " " })
+      vim.api.nvim_win_set_cursor(0, { row + 1, inner[i][1] + 1 })
+    end
+    if vim.api.nvim_win_is_valid(src_win) then
+      vim.api.nvim_win_call(src_win, write)
+    else
+      write()
+    end
   end
   -- :q saves and exits, :q! discards, :w saves in place. :q is a builtin, so a buffer-local
   -- command-line abbreviation rewrites a bare `q` to the save command; v:char is the key that
