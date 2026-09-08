@@ -14,8 +14,9 @@
 -- nothing gaps. wrap_starts() reproduces nvim's wrap points including 'linebreak'.
 --
 -- Lock (M.locked, <leader>tt, default on): tables stay rendered even under the cursor.
--- The cell the cursor is in is highlighted, hjkl move by cell/row, and entering insert
--- (or visual) mode reveals the row so you can see what you type; Esc re-locks it. With
+-- The cursor itself is hidden there and the cell it is in is highlighted; hjkl move by
+-- cell/row; i / a insert at the start / end of that cell; entering insert (or visual)
+-- mode reveals the row so you can see what you type and Esc re-locks it. With
 -- the lock off the cursor row shows raw (hover mode) and hjkl are normal motions. Arrow
 -- keys move by cell/row on a table in both modes.
 --
@@ -43,6 +44,9 @@ M.opts = {
 M.locked = true
 
 vim.api.nvim_set_hl(0, "WrappedTableCursorCell", { link = "Visual", default = true })
+-- fully transparent cursor, used while in normal mode on a locked table row so only the
+-- highlighted cell shows where you are
+vim.api.nvim_set_hl(0, "WrappedTableHiddenCursor", { blend = 100, nocombine = true })
 
 -- ---------------------------------------------------------------- text helpers
 
@@ -900,6 +904,41 @@ local function rerender(buf)
   end)
 end
 
+---i / a on a locked table row: the cursor is hidden there, so insert at the start (i) or
+---end (a) of the highlighted cell's text; the row reveals itself in insert mode as usual.
+---Elsewhere they are the plain commands.
+function M.insert(key)
+  return function()
+    if M.locked and vim.v.count == 0 then
+      local row, col = cursor()
+      local tbl = M.table_at(0, row)
+      if tbl and row ~= tbl.delim then
+        local i, _, spans = cell_index(tbl.lines[row + 1], col)
+        if i then
+          vim.api.nvim_win_set_cursor(0, { row + 1, key == "a" and spans[i][2] or spans[i][1] })
+          vim.cmd.startinsert()
+          return
+        end
+      end
+    end
+    vim.api.nvim_feedkeys(vim.v.count1 .. key, "n", false)
+  end
+end
+
+-- cursor hiding: guicursor is global, so swap it while in normal mode on a locked table row
+-- and put the user's value back the moment that stops being true
+local saved_guicursor ---@type string?
+
+local function hide_cursor(hide)
+  if hide and not saved_guicursor then
+    saved_guicursor = vim.o.guicursor
+    vim.o.guicursor = "a:WrappedTableHiddenCursor/WrappedTableHiddenCursor"
+  elseif not hide and saved_guicursor then
+    vim.o.guicursor = saved_guicursor
+    saved_guicursor = nil
+  end
+end
+
 ---Enter on a table row opens the cell float (and Enter inside it saves and exits); off a
 ---table, Enter is the plain motion it always was.
 function M.enter()
@@ -915,6 +954,10 @@ end
 ---<leader>tt: flip between locked (tables always rendered) and hover (cursor row raw).
 function M.toggle_lock()
   M.locked = not M.locked
+  if not M.locked then
+    hide_cursor(false)
+  end
+  last = {}
   rerender(vim.api.nvim_get_current_buf())
   vim.notify(M.locked and "tables: locked (rendered under the cursor, hjkl by cell)" or "tables: hover (cursor row raw)", vim.log.levels.INFO)
 end
@@ -950,9 +993,18 @@ function M.setup()
       local state = cursor_state(args.buf)
       local prev = last[args.buf]
       last[args.buf] = state
+      -- on a table row in normal mode: only the highlighted cell shows the position
+      hide_cursor(state ~= "off" and state:sub(-1) == "n")
       if state ~= prev and (state ~= "off" or prev ~= "off") then
         rerender(args.buf)
       end
+    end,
+  })
+  vim.api.nvim_create_autocmd({ "BufLeave", "WinLeave", "FocusLost", "VimLeavePre" }, {
+    group = group,
+    pattern = "*",
+    callback = function()
+      hide_cursor(false)
     end,
   })
 end

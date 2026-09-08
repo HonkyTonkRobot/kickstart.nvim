@@ -5,8 +5,9 @@
 -- type straight into it, every other row stays rendered. Read that file's header for how.
 --
 -- Table keys (markdown buffers):
---   <leader>tt    lock on (default): tables stay rendered under the cursor, the current cell
---                 is highlighted, hjkl move by cell / row, insert mode reveals the row.
+--   <leader>tt    lock on (default): tables stay rendered under the cursor, the cursor is hidden
+--                 and the current cell highlighted, hjkl move by cell / row, i / a insert at the
+--                 start / end of that cell (the row reveals itself while typing).
 --                 lock off: cursor row shows raw, hjkl are normal motions.
 --   arrows        move by cell / row when on a table line in either mode
 --   Enter         on a table row: edit the cell in a float (Enter or :q saves and exits, :q! discards)
@@ -53,6 +54,9 @@ return {
       ft = 'markdown',
     },
     { '<leader>tt', function() wt().toggle_lock() end, desc = '[T]oggle [T]able lock (rendered under cursor)', ft = 'markdown' },
+    -- i / a on a locked table row: insert at the start / end of the highlighted cell
+    { 'i', function() wt().insert('i')() end, desc = 'Insert (at cell start on a locked table)', ft = 'markdown' },
+    { 'a', function() wt().insert('a')() end, desc = 'Append (at cell end on a locked table)', ft = 'markdown' },
     -- hjkl: by cell / row on a locked table, normal motions otherwise
     { 'h', function() wt().hjkl('h')() end, desc = 'Left / previous table cell', ft = 'markdown' },
     { 'l', function() wt().hjkl('l')() end, desc = 'Right / next table cell', ft = 'markdown' },
