@@ -9,7 +9,7 @@
 --                 is highlighted, hjkl move by cell / row, insert mode reveals the row.
 --                 lock off: cursor row shows raw, hjkl are normal motions.
 --   arrows        move by cell / row when on a table line in either mode
---   <leader>me    edit the cell under the cursor in a float (<CR> or <leader>mx save and exit)
+--   <leader>me    edit the cell under the cursor in a float (:q saves and exits, :q! discards)
 --   <leader>mf    realign the raw table      <leader>mr / mR   add / delete row
 --   <leader>mc / mC  add / delete column     <leader>tm        toggle all rendering
 local function wt()
@@ -58,7 +58,7 @@ return {
     { 'j', function() wt().hjkl('j')() end, desc = 'Down / next table row', ft = 'markdown' },
     { 'k', function() wt().hjkl('k')() end, desc = 'Up / previous table row', ft = 'markdown' },
     -- <leader>m = [M]arkdown table editing
-    { '<leader>me', function() wt().edit_cell() end, desc = '[E]dit cell in a float (<CR> / <leader>mx save and exit)', ft = 'markdown' },
+    { '<leader>me', function() wt().edit_cell() end, desc = '[E]dit cell in a float (:q save, :q! discard)', ft = 'markdown' },
     { '<leader>mf', function() wt().format() end, desc = '[F]ormat / realign raw table', ft = 'markdown' },
     { '<leader>mr', function() wt().add_row() end, desc = 'Add [r]ow below', ft = 'markdown' },
     { '<leader>mR', function() wt().delete_row() end, desc = 'Delete [R]ow', ft = 'markdown' },

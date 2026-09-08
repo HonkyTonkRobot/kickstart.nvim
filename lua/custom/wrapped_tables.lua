@@ -698,7 +698,7 @@ function M.prev_row()
   return move_row(-1)
 end
 
----Open the cell under the cursor in a float. <CR> or <leader>mx saves and exits; :w saves; :q! discards.
+---Open the cell under the cursor in a float. :q saves and exits, :q! discards, :w saves in place.
 function M.edit_cell()
   local row, col = cursor()
   local tbl = M.table_at(0, row)
@@ -733,7 +733,7 @@ function M.edit_cell()
     border = "rounded",
     title = title,
     title_pos = "center",
-    footer = " <CR> or <leader>mx save and exit · :q! discard ",
+    footer = " :q save and exit · :q! discard ",
     footer_pos = "right",
   })
   vim.wo[win].wrap = true
@@ -756,12 +756,17 @@ function M.edit_cell()
     vim.bo[buf].modified = false
     vim.api.nvim_win_close(win, true)
   end
-  -- A cell is one line: Enter means "done" rather than newline, in insert and normal mode.
-  -- Esc is plain Esc (leave insert, float stays open). <leader>mx saves and exits like the
-  -- diffview exit. No cancel key: the save is one undo step in the source, and :q! discards.
+  -- :q saves and exits, :q! discards, :w saves in place. :q is a builtin, so a buffer-local
+  -- command-line abbreviation rewrites a bare `q` to the save command; v:char is the key that
+  -- triggered the expansion, so `q!` is left alone. Esc is plain Esc (leave insert, float
+  -- stays open). Enter also saves and exits, since a cell is one line and a newline has no
+  -- meaning here; o/O are no-ops for the same reason.
   vim.api.nvim_create_autocmd("BufWriteCmd", { buffer = buf, callback = save })
+  vim.api.nvim_buf_create_user_command(buf, "WrappedTableCellSave", save, {})
+  vim.cmd([[cnoreabbrev <buffer> <expr> q (getcmdtype() == ':' && getcmdline() == 'q' && v:char !=# '!') ? 'WrappedTableCellSave' : 'q']])
+  vim.cmd([[cnoreabbrev <buffer> <expr> wq (getcmdtype() == ':' && getcmdline() == 'wq') ? 'WrappedTableCellSave' : 'wq']])
+  vim.cmd([[cnoreabbrev <buffer> <expr> x (getcmdtype() == ':' && getcmdline() == 'x') ? 'WrappedTableCellSave' : 'x']])
   vim.keymap.set({ "n", "i" }, "<CR>", save, { buffer = buf, desc = "save cell and exit" })
-  vim.keymap.set("n", "<leader>mx", save, { buffer = buf, desc = "save cell and e[x]it" })
   vim.keymap.set("n", "o", "<Nop>", { buffer = buf })
   vim.keymap.set("n", "O", "<Nop>", { buffer = buf })
 end
