@@ -48,6 +48,8 @@ return { -- Useful plugin to show you pending keybinds.
       { "<leader>d",  group = "[D]ocument" },
       { "<leader>r",  group = "[R]ename" },
       { "<leader>s",  group = "[S]earch" },
+      { "<leader>st", group = "[S]earch [T]odos" },
+      { "<leader>m",  group = "[M]arkdown table" },
       { "<leader>w",  group = "[W]orkspace" },
       { "<leader>t",  group = "[T]oggle" },
       { "<leader>g",  group = "[G]it",        mode = { "n", "v" } },
