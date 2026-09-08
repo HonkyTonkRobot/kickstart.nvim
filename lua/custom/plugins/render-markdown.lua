@@ -5,7 +5,10 @@
 -- type straight into it, every other row stays rendered. Read that file's header for how.
 --
 -- Table keys (markdown buffers):
---   arrows        move by cell / row when on a table line, plain movement elsewhere
+--   <leader>tt    lock on (default): tables stay rendered under the cursor, the current cell
+--                 is highlighted, hjkl move by cell / row, insert mode reveals the row.
+--                 lock off: cursor row shows raw, hjkl are normal motions.
+--   arrows        move by cell / row when on a table line in either mode
 --   <leader>me    edit the cell under the cursor in a float (<C-s> save, q cancel)
 --   <leader>mf    realign the raw table      <leader>mr / mR   add / delete row
 --   <leader>mc / mC  add / delete column     <leader>tm        toggle all rendering
@@ -33,6 +36,12 @@ return {
       completions = { lsp = { enabled = true } },
     }
   end,
+  config = function(_, opts)
+    require('render-markdown').setup(opts)
+    -- locked tables re-render on cursor-cell and mode changes (render-markdown alone only
+    -- re-runs handlers when the text changes)
+    wt().setup()
+  end,
   keys = {
     {
       '<leader>tm',
@@ -42,6 +51,12 @@ return {
       desc = '[T]oggle [M]arkdown rendering',
       ft = 'markdown',
     },
+    { '<leader>tt', function() wt().toggle_lock() end, desc = '[T]oggle [T]able lock (rendered under cursor)', ft = 'markdown' },
+    -- hjkl: by cell / row on a locked table, normal motions otherwise
+    { 'h', function() wt().hjkl('h')() end, desc = 'Left / previous table cell', ft = 'markdown' },
+    { 'l', function() wt().hjkl('l')() end, desc = 'Right / next table cell', ft = 'markdown' },
+    { 'j', function() wt().hjkl('j')() end, desc = 'Down / next table row', ft = 'markdown' },
+    { 'k', function() wt().hjkl('k')() end, desc = 'Up / previous table row', ft = 'markdown' },
     -- <leader>m = [M]arkdown table editing
     { '<leader>me', function() wt().edit_cell() end, desc = '[E]dit cell in a float (<C-s> save, q cancel)', ft = 'markdown' },
     { '<leader>mf', function() wt().format() end, desc = '[F]ormat / realign raw table', ft = 'markdown' },

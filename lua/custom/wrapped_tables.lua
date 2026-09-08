@@ -13,7 +13,13 @@
 -- raw row is taller than the rendered one, the spare rows get empty cell lines so
 -- nothing gaps. wrap_starts() reproduces nvim's wrap points including 'linebreak'.
 --
--- Also here: the cell-level editing commands the arrow keys and <leader>m bind to
+-- Lock (M.locked, <leader>tt, default on): tables stay rendered even under the cursor.
+-- The cell the cursor is in is highlighted, hjkl move by cell/row, and entering insert
+-- (or visual) mode reveals the row so you can see what you type; Esc re-locks it. With
+-- the lock off the cursor row shows raw (hover mode) and hjkl are normal motions. Arrow
+-- keys move by cell/row on a table in both modes.
+--
+-- Also here: the cell-level editing commands the arrow keys, hjkl and <leader>m bind to
 -- (next/prev cell and row, edit cell in a float, add/delete row and column, format),
 -- so no separate table plugin is needed.
 
@@ -29,8 +35,14 @@ M.opts = {
     link = "RenderMarkdownLink",
     code = "RenderMarkdownCodeInline",
     bold = "Bold",
+    cursor_cell = "WrappedTableCursorCell",
   },
 }
+
+-- tables stay rendered under the cursor; <leader>tt flips this for the session
+M.locked = true
+
+vim.api.nvim_set_hl(0, "WrappedTableCursorCell", { link = "Visual", default = true })
 
 -- ---------------------------------------------------------------- text helpers
 
@@ -373,9 +385,9 @@ end
 
 local BOX = { h = "─", v = "│", tl = "┌", tr = "┐", bl = "└", br = "┘", t = "┬", b = "┴", l = "├", r = "┤", x = "┼" }
 
----Build the rendered lines for one table.
+---Build the rendered lines for one table. `cursor` = { row, cell } highlights that cell.
 ---@return table<integer, { lines: { [1]: string, [2]: string }[][] }> per row, plus borders
-local function layout(tbl, W)
+local function layout(tbl, W, cursor)
   local hl = M.opts.hl
   local ncols = tbl.ncols
   local rows = { tbl.header }
@@ -419,11 +431,12 @@ local function layout(tbl, W)
         parts[#parts + 1] = { " ", grp }
         local cell = wrapped[c][i] or {}
         local used = 0
+        local here = cursor and cursor.row == r and cursor.cell == c
         for _, ch in ipairs(cell) do
-          parts[#parts + 1] = { ch[1], is_head and hl.head or ch[2] }
+          parts[#parts + 1] = { ch[1], here and hl.cursor_cell or (is_head and hl.head or ch[2]) }
           used = used + strwidth(ch[1])
         end
-        parts[#parts + 1] = { string.rep(" ", widths[c] - used + 1), grp }
+        parts[#parts + 1] = { string.rep(" ", widths[c] - used + 1), here and hl.cursor_cell or grp }
         parts[#parts + 1] = { BOX.v, grp }
       end
       lines[i] = parts
@@ -448,23 +461,25 @@ end
 -- that did not change.
 local cache = setmetatable({}, { __mode = "k" })
 
-local function table_marks(tbl, W, linebreak)
+---@param keep integer? row whose marks must survive the cursor (locked mode): conceal=false
+local function table_marks(tbl, W, linebreak, cursor, keep)
   local marks = {}
-  local L = layout(tbl, W)
+  local L = layout(tbl, W, cursor)
   local ordered = { tbl.header, tbl.delim }
   vim.list_extend(ordered, tbl.rows)
   for idx, r in ipairs(ordered) do
         local raw = tbl.lines[r + 1]
         local lines = r == tbl.delim and { L.mid } or L.rows[r]
         local starts = M.wrap_starts(raw, W, linebreak)
+        local hide = r ~= keep -- anti-conceal removes conceal=true marks on the cursor row
         -- hide the raw text
-        marks[#marks + 1] = { conceal = true, start_row = r, start_col = 0, opts = { end_row = r, end_col = #raw, conceal = "" } }
+        marks[#marks + 1] = { conceal = hide, start_row = r, start_col = 0, opts = { end_row = r, end_col = #raw, conceal = "" } }
         -- rendered lines onto the raw row's wrap rows
         local R = #starts
         for i = 1, math.max(#lines, R) do
           local line = lines[i] or L.empty
           if i <= R then
-            marks[#marks + 1] = { conceal = true, start_row = r, start_col = starts[i], opts = { virt_text = line, virt_text_pos = "overlay" } }
+            marks[#marks + 1] = { conceal = hide, start_row = r, start_col = starts[i], opts = { virt_text = line, virt_text_pos = "overlay" } }
           end
         end
         local extra = {}
@@ -475,10 +490,10 @@ local function table_marks(tbl, W, linebreak)
           extra[#extra + 1] = L.bottom
         end
         if #extra > 0 then
-          marks[#marks + 1] = { conceal = true, start_row = r, start_col = 0, opts = { virt_lines = extra } }
+          marks[#marks + 1] = { conceal = hide, start_row = r, start_col = 0, opts = { virt_lines = extra } }
         end
         if idx == 1 then
-          marks[#marks + 1] = { conceal = true, start_row = r, start_col = 0, opts = { virt_lines = { L.top }, virt_lines_above = true } }
+          marks[#marks + 1] = { conceal = hide, start_row = r, start_col = 0, opts = { virt_lines = { L.top }, virt_lines_above = true } }
         end
       end
   return marks
@@ -500,6 +515,15 @@ function M.parse_markdown(ctx)
     bufcache = { W = W, linebreak = linebreak, tables = {} }
     cache[ctx.buf] = bufcache
   end
+  -- locked: nvim must not un-conceal the cursor line in normal mode; insert stays revealed
+  local want = M.locked and "nvc" or ""
+  if vim.wo[win].concealcursor ~= want then
+    vim.wo[win].concealcursor = want
+  end
+  local mode = vim.api.nvim_get_mode().mode
+  local reveal = mode:match("^[iRvV\22sS]") ~= nil -- typing or selecting: show the raw row
+  local crow, ccol = unpack(vim.api.nvim_win_get_cursor(win))
+  crow = crow - 1
   local seen = {}
   ts_query = ts_query or vim.treesitter.query.parse("markdown", "(pipe_table) @table")
   for _, node in ts_query:iter_captures(ctx.root, ctx.buf) do
@@ -513,11 +537,30 @@ function M.parse_markdown(ctx)
       slice[#slice] = nil
     end
     local key = sr .. "\0" .. table.concat(slice, "\n")
+    -- the table under the cursor renders differently when locked: highlighted cell, marks
+    -- kept on the cursor row (unless typing). Everything else is cursor-independent.
+    local cursor, keep
+    if M.locked and not reveal and crow >= sr and crow <= sr + #slice - 1 then
+      local cells, spans = M.split_row(slice[crow - sr + 1])
+      local cell = 1
+      if cells then
+        for i, sp in ipairs(spans) do
+          local nxt = spans[i + 1]
+          if ccol < (nxt and nxt[1] - 1 or math.huge) then
+            cell = i
+            break
+          end
+          cell = i
+        end
+      end
+      cursor, keep = { row = crow, cell = cell }, crow
+      key = key .. ("\0L%d:%d"):format(crow, cell)
+    end
     seen[key] = true
     local hit = bufcache.tables[key]
     if not hit then
       local tbl = M.table_from_lines(slice, sr)
-      hit = (tbl and tbl.ncols > 0) and table_marks(tbl, W, linebreak) or {}
+      hit = (tbl and tbl.ncols > 0) and table_marks(tbl, W, linebreak, cursor, keep) or {}
       bufcache.tables[key] = hit
     end
     vim.list_extend(marks, hit)
@@ -809,16 +852,86 @@ function M.format()
   end)
 end
 
----Arrow-key helper: run `fn` when on a table row, else the plain motion.
+local function plain(motion)
+  vim.cmd.normal({ vim.v.count1 .. motion, bang = true })
+end
+
+---Arrow-key helper: run `fn` when on a table row (falling back to the plain motion when
+---it has nowhere to go, e.g. Down on the last row), else the plain motion.
 function M.on_table_or(fn, motion)
   return function()
     local row = cursor()
-    if M.table_at(0, row) then
-      fn()
-    else
-      vim.cmd.normal({ motion, bang = true })
+    if not (M.table_at(0, row) and fn()) then
+      plain(motion)
     end
   end
+end
+
+local HJKL = { h = "prev_cell", l = "next_cell", j = "next_row", k = "prev_row" }
+
+---hjkl: move by cell/row while the lock is on and the cursor is on a table; otherwise the
+---normal motion, counts preserved.
+function M.hjkl(key)
+  return function()
+    if M.locked and vim.v.count == 0 then
+      local row = cursor()
+      if M.table_at(0, row) and M[HJKL[key]]() then
+        return
+      end
+    end
+    plain(key)
+  end
+end
+
+local function rerender(buf)
+  pcall(function()
+    require("render-markdown.api").render({ buf = buf, event = "WrappedTables" })
+  end)
+end
+
+---<leader>tt: flip between locked (tables always rendered) and hover (cursor row raw).
+function M.toggle_lock()
+  M.locked = not M.locked
+  rerender(vim.api.nvim_get_current_buf())
+  vim.notify(M.locked and "tables: locked (rendered under the cursor, hjkl by cell)" or "tables: hover (cursor row raw)", vim.log.levels.INFO)
+end
+
+-- render-markdown only re-runs handlers when the buffer changes; locked tables also depend
+-- on which cell the cursor is in and on the mode (insert reveals the row), so ask for a
+-- re-render when either changes while the cursor is on or was on a table. The per-table
+-- cache keeps this at about a millisecond.
+local last = {} ---@type table<integer, string>
+
+local function cursor_state(buf)
+  local row, col = cursor()
+  local tbl = M.table_at(buf, row)
+  if not tbl then
+    return "off"
+  end
+  local i = cell_index(tbl.lines[row + 1], col) or 0
+  return ("%d:%d:%s"):format(row, i, vim.api.nvim_get_mode().mode:sub(1, 1))
+end
+
+function M.setup()
+  local group = vim.api.nvim_create_augroup("WrappedTables", { clear = true })
+  vim.api.nvim_create_autocmd({ "CursorMoved", "ModeChanged" }, {
+    group = group,
+    pattern = "*",
+    callback = function(args)
+      if not M.locked or vim.bo[args.buf].filetype ~= "markdown" then
+        return
+      end
+      if vim.api.nvim_get_current_buf() ~= args.buf then
+        return
+      end
+      local state = cursor_state(args.buf)
+      local prev = last[args.buf]
+      last[args.buf] = state
+      if state ~= prev and (state ~= "off" or prev ~= "off") then
+        rerender(args.buf)
+      end
+    end,
+  })
 end
 
 return M
