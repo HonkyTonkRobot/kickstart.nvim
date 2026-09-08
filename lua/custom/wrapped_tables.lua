@@ -146,7 +146,7 @@ function M.split_row(line)
   if #pipes < 2 then
     return nil
   end
-  local cells, spans = {}, {}
+  local cells, spans, inner = {}, {}, {}
   for k = 1, #pipes - 1 do
     local a, b = pipes[k] + 1, pipes[k + 1] - 1
     local raw = line:sub(a, b)
@@ -155,8 +155,9 @@ function M.split_row(line)
     local text = raw:sub(ls, le - 1)
     cells[#cells + 1] = text
     spans[#spans + 1] = { a - 1 + ls - 1, a - 1 + le - 1 }
+    inner[#inner + 1] = { a - 1, b } -- everything between the two pipes, padding included
   end
-  return cells, spans
+  return cells, spans, inner
 end
 
 ---Turn cell markdown into highlighted chunks: strips link targets, code ticks, bold
@@ -697,7 +698,7 @@ function M.prev_row()
   return move_row(-1)
 end
 
----Open the cell under the cursor in a float. <C-s> or :w saves, q / <Esc> (normal) cancels.
+---Open the cell under the cursor in a float. <CR> or <leader>mx saves and exits; :w saves; :q! discards.
 function M.edit_cell()
   local row, col = cursor()
   local tbl = M.table_at(0, row)
@@ -732,32 +733,37 @@ function M.edit_cell()
     border = "rounded",
     title = title,
     title_pos = "center",
-    footer = " <C-s> save · q cancel ",
+    footer = " <CR> or <leader>mx save and exit · :q! discard ",
     footer_pos = "right",
   })
   vim.wo[win].wrap = true
   vim.wo[win].linebreak = true
   vim.wo[win].conceallevel = 0
 
+  local _, _, inner = M.split_row(line)
   local function save()
+    if vim.api.nvim_get_mode().mode:match("^i") then
+      vim.cmd.stopinsert() -- so the source window is not left in insert mode after the float closes
+    end
     local new = table.concat(vim.api.nvim_buf_get_lines(buf, 0, -1, false), " ")
     new = vim.trim(new):gsub("|", "\\|")
     local cur = vim.api.nvim_buf_get_lines(src, row, row + 1, false)[1]
     if cur ~= line then
       return vim.notify("the row changed while the cell was open; not saved", vim.log.levels.ERROR)
     end
-    vim.api.nvim_buf_set_text(src, row, spans[i][1], row, spans[i][2], { new })
+    -- replace everything between the pipes so the raw cell is always `| text |`
+    vim.api.nvim_buf_set_text(src, row, inner[i][1], row, inner[i][2], { " " .. new .. " " })
     vim.bo[buf].modified = false
     vim.api.nvim_win_close(win, true)
   end
-  local function cancel()
-    vim.bo[buf].modified = false
-    vim.api.nvim_win_close(win, true)
-  end
+  -- A cell is one line: Enter means "done" rather than newline, in insert and normal mode.
+  -- Esc is plain Esc (leave insert, float stays open). <leader>mx saves and exits like the
+  -- diffview exit. No cancel key: the save is one undo step in the source, and :q! discards.
   vim.api.nvim_create_autocmd("BufWriteCmd", { buffer = buf, callback = save })
-  vim.keymap.set({ "n", "i" }, "<C-s>", save, { buffer = buf })
-  vim.keymap.set("n", "q", cancel, { buffer = buf })
-  vim.keymap.set("n", "<Esc>", cancel, { buffer = buf })
+  vim.keymap.set({ "n", "i" }, "<CR>", save, { buffer = buf, desc = "save cell and exit" })
+  vim.keymap.set("n", "<leader>mx", save, { buffer = buf, desc = "save cell and e[x]it" })
+  vim.keymap.set("n", "o", "<Nop>", { buffer = buf })
+  vim.keymap.set("n", "O", "<Nop>", { buffer = buf })
 end
 
 local function replace_table_lines(tbl, new_lines)
