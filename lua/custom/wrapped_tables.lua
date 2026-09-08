@@ -318,6 +318,17 @@ function M.table_from_lines(slice, first)
   return { first = first, last = last, header = first, delim = delim, rows = body, ncols = cells and #cells or 0, lines = lines }
 end
 
+---Rows of the table that starts at `sr` in `lines` (a full buffer line list): the header
+---and every consecutive pipe row after it. tree-sitter-markdown ends a table early when a
+---row has all-empty cells, so the extent is scanned here rather than read from the node.
+local function table_extent(lines, sr)
+  local er = sr
+  while lines[er + 2] and is_row(lines[er + 2]) do
+    er = er + 1
+  end
+  return er
+end
+
 ---Parse the table containing `row` (0-based) in `buf` by scanning for the pipe rows
 ---around it. Returns nil if none. Used by the editing commands.
 function M.table_at(buf, row)
@@ -530,17 +541,12 @@ function M.parse_markdown(ctx)
   local crow, ccol = unpack(vim.api.nvim_win_get_cursor(win))
   crow = crow - 1
   local seen = {}
+  local all = vim.api.nvim_buf_get_lines(ctx.buf, 0, -1, false)
   ts_query = ts_query or vim.treesitter.query.parse("markdown", "(pipe_table) @table")
   for _, node in ts_query:iter_captures(ctx.root, ctx.buf) do
-    local sr, _, er, ec = node:range()
-    if ec == 0 then
-      er = er - 1
-    end
-    local slice = vim.api.nvim_buf_get_lines(ctx.buf, sr, er + 1, false)
-    -- trailing non-table lines can sneak into the node range; trim them
-    while #slice > 0 and not is_row(slice[#slice]) do
-      slice[#slice] = nil
-    end
+    local sr = node:range()
+    local er = table_extent(all, sr)
+    local slice = vim.list_slice(all, sr + 1, er + 1)
     local key = sr .. "\0" .. table.concat(slice, "\n")
     -- the table under the cursor renders differently when locked: highlighted cell, marks
     -- kept on the cursor row (unless typing). Everything else is cursor-independent.
@@ -587,11 +593,12 @@ function M.parse_inline(ctx)
     return builtin
   end
   local rows = {}
+  local all = vim.api.nvim_buf_get_lines(ctx.buf, 0, -1, false)
   ts_query = ts_query or vim.treesitter.query.parse("markdown", "(pipe_table) @table")
   for _, tree in ipairs(parser:trees()) do
     for _, node in ts_query:iter_captures(tree:root(), ctx.buf) do
-      local sr, _, er = node:range()
-      for r = sr, er do
+      local sr = node:range()
+      for r = sr, table_extent(all, sr) do
         rows[r] = true
       end
     end
@@ -744,6 +751,9 @@ function M.edit_cell()
   vim.wo[win].wrap = true
   vim.wo[win].linebreak = true
   vim.wo[win].conceallevel = 0
+  if text == "" then
+    vim.cmd.startinsert() -- nothing to read or move around in, so start typing
+  end
 
   local _, _, inner = M.split_row(line)
   local function save()
