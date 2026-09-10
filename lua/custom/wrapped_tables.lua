@@ -29,7 +29,6 @@ local M = {}
 
 M.opts = {
   min_col = 6, -- never squeeze a column narrower than this
-  prefixes = { "Q", "ASK", "FIX", "SIZE", "JV" }, -- keywords coloured in cells if todo-comments is missing
   hl = {
     head = "RenderMarkdownTableHead",
     row = "RenderMarkdownTableRow",
@@ -172,7 +171,7 @@ function M.split_row(line)
 end
 
 ---Keyword -> highlight group for every todo-comments keyword (alternates such as FIXME map to
----their main keyword's group), plus M.opts.prefixes as a fallback when the plugin is absent.
+---their main keyword's group). Empty until the plugin has run its setup.
 local function todo_groups()
   local groups = {}
   local ok, cfg = pcall(require, "todo-comments.config")
@@ -180,9 +179,6 @@ local function todo_groups()
     for alt, main in pairs(cfg.keywords) do
       groups[alt] = "TodoBg" .. main
     end
-  end
-  for _, kw in ipairs(M.opts.prefixes) do
-    groups[kw] = groups[kw] or ("TodoBg" .. kw)
   end
   return groups
 end
