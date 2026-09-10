@@ -170,19 +170,6 @@ function M.split_row(line)
   return cells, spans, inner
 end
 
----Keyword -> highlight group for every todo-comments keyword (alternates such as FIXME map to
----their main keyword's group). Empty until the plugin has run its setup.
-local function todo_groups()
-  local groups = {}
-  local ok, cfg = pcall(require, "todo-comments.config")
-  if ok and type(cfg.keywords) == "table" then
-    for alt, main in pairs(cfg.keywords) do
-      groups[alt] = "TodoBg" .. main
-    end
-  end
-  return groups
-end
-
 ---Turn cell markdown into highlighted chunks: strips link targets, code ticks, bold
 ---markers and pipe escapes; colours any todo-comments keyword (`NOTE:`, `Q:`, `FIXME:` ...)
 ---wherever it appears in plain text.
@@ -195,23 +182,19 @@ function M.clean(text)
       chunks[#chunks + 1] = { t, h }
     end
   end
-  local groups = todo_groups()
-  -- plain text run: split out `KEYWORD:` tokens (word-start, upper case, colon) and colour them
+  local keywords = require("custom.todo_keywords")
+  local groups = keywords.groups()
+  -- plain text run: split out `KEYWORD:` tokens and colour them with their todo-comments group
   local function push_plain(run)
     local j = 1
     while j <= #run do
-      local ks, ke, kw = run:find("%f[%w](%u+)%s*:", j)
+      local ks, ke, grp = keywords.find(run, j, groups)
       if not ks then
         push(run:sub(j), hl.text)
         break
       end
-      local grp = groups[kw]
-      if grp then
-        push(run:sub(j, ks - 1), hl.text)
-        push(run:sub(ks, ke), vim.fn.hlexists(grp) == 1 and grp or "Todo")
-      else
-        push(run:sub(j, ke), hl.text)
-      end
+      push(run:sub(j, ks - 1), hl.text)
+      push(run:sub(ks, ke), grp)
       j = ke + 1
     end
   end
