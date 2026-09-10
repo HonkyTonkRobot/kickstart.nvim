@@ -29,7 +29,7 @@ local M = {}
 
 M.opts = {
   min_col = 6, -- never squeeze a column narrower than this
-  prefixes = { "Q", "ASK", "FIX", "SIZE", "JV" }, -- review keywords coloured inside rendered cells
+  prefixes = { "Q", "ASK", "FIX", "SIZE", "JV" }, -- keywords coloured in cells if todo-comments is missing
   hl = {
     head = "RenderMarkdownTableHead",
     row = "RenderMarkdownTableRow",
@@ -171,8 +171,25 @@ function M.split_row(line)
   return cells, spans, inner
 end
 
+---Keyword -> highlight group for every todo-comments keyword (alternates such as FIXME map to
+---their main keyword's group), plus M.opts.prefixes as a fallback when the plugin is absent.
+local function todo_groups()
+  local groups = {}
+  local ok, cfg = pcall(require, "todo-comments.config")
+  if ok and type(cfg.keywords) == "table" then
+    for alt, main in pairs(cfg.keywords) do
+      groups[alt] = "TodoBg" .. main
+    end
+  end
+  for _, kw in ipairs(M.opts.prefixes) do
+    groups[kw] = groups[kw] or ("TodoBg" .. kw)
+  end
+  return groups
+end
+
 ---Turn cell markdown into highlighted chunks: strips link targets, code ticks, bold
----markers and pipe escapes; colours a leading review prefix with its todo-comments group.
+---markers and pipe escapes; colours any todo-comments keyword (`NOTE:`, `Q:`, `FIXME:` ...)
+---wherever it appears in plain text.
 ---@return { [1]: string, [2]: string }[]
 function M.clean(text)
   local hl = M.opts.hl
@@ -182,20 +199,29 @@ function M.clean(text)
       chunks[#chunks + 1] = { t, h }
     end
   end
+  local groups = todo_groups()
+  -- plain text run: split out `KEYWORD:` tokens (word-start, upper case, colon) and colour them
+  local function push_plain(run)
+    local j = 1
+    while j <= #run do
+      local ks, ke, kw = run:find("%f[%w](%u+)%s*:", j)
+      if not ks then
+        push(run:sub(j), hl.text)
+        break
+      end
+      local grp = groups[kw]
+      if grp then
+        push(run:sub(j, ks - 1), hl.text)
+        push(run:sub(ks, ke), vim.fn.hlexists(grp) == 1 and grp or "Todo")
+      else
+        push(run:sub(j, ke), hl.text)
+      end
+      j = ke + 1
+    end
+  end
   text = text:gsub("\\|", "|")
   if text == M.PLACEHOLDER then
     return { { text, hl.placeholder } }
-  end
-  -- review prefix at the start of the cell
-  for _, kw in ipairs(M.opts.prefixes) do
-    local rest = text:match("^" .. kw .. ":%s*(.*)$")
-    if rest then
-      local grp = "TodoBg" .. kw
-      push(kw .. ":", vim.fn.hlexists(grp) == 1 and grp or "Todo")
-      push(" ", hl.text)
-      text = rest
-      break
-    end
   end
   local i = 1
   while i <= #text do
@@ -216,7 +242,7 @@ function M.clean(text)
         else
           -- plain run up to the next special character
           local ns = text:find("[%[`%*]", i + 1) or (#text + 1)
-          push(text:sub(i, ns - 1), hl.text)
+          push_plain(text:sub(i, ns - 1))
           i = ns
         end
       end
