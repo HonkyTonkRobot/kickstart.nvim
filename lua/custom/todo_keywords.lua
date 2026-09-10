@@ -1,11 +1,11 @@
--- Review keywords (Q:, ASK:, FIX:, NOTE: ...) in markdown.
+-- Review keywords (Q:, ASK:, FIX:, NOTE: ...) in every file type.
 --
 -- todo-comments highlights one keyword per line, and its greedy `.*<(KEYWORDS):` pattern picks
--- the last one, so `FIX: a JV: b` only lit up JV. Markdown is excluded from its highlighter and
--- this module colours every `KEYWORD:` on a line instead (ephemeral extmarks from a decoration
--- provider, so nothing to clean up). The keyword -> group map comes from todo-comments' own
--- config, alternates included (FIXME -> TodoBgFIX, INFO -> TodoBgNOTE). wrapped_tables uses
--- the same scanner for rendered cells.
+-- the last one, so `FIX: a JV: b` only lit up JV. Its highlighter is switched off after setup
+-- and this module colours every `KEYWORD:` on a line instead (ephemeral extmarks from a
+-- decoration provider, so nothing to clean up). Keywords, colours and the Telescope pickers
+-- still come from todo-comments; the keyword -> group map is read from its config, alternates
+-- included (FIXME -> TodoBgFIX, INFO -> TodoBgNOTE). wrapped_tables uses the same scanner.
 local M = {}
 
 ---Keyword -> highlight group for every todo-comments keyword. Empty until the plugin has run
@@ -42,14 +42,25 @@ end
 
 local ns = vim.api.nvim_create_namespace("custom_todo_keywords")
 
+---Stop todo-comments' own highlighter once its (possibly deferred) setup has run, so lines are
+---not marked twice. Search pickers and highlight groups are unaffected.
+local function stop_plugin_highlighter()
+  if require("todo-comments.config").loaded then
+    require("todo-comments").disable()
+  else
+    vim.defer_fn(stop_plugin_highlighter, 20)
+  end
+end
+
 function M.setup()
+  stop_plugin_highlighter()
   vim.api.nvim_set_decoration_provider(ns, {
     on_win = function(_, _, buf)
-      return vim.bo[buf].filetype == "markdown"
+      return vim.bo[buf].buftype == "" -- real files only, not pickers / quickfix / help
     end,
     on_line = function(_, _, buf, row)
       local line = vim.api.nvim_buf_get_lines(buf, row, row + 1, false)[1]
-      if not line or not line:find(":", 1, true) then
+      if not line or #line > 1000 or not line:find(":", 1, true) then
         return
       end
       local groups = M.groups()

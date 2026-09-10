@@ -56,10 +56,10 @@ return {
     colors = {
       jv = { "DiagnosticError", "#e0af68" },
     },
+    -- Highlighting itself is done by custom/todo_keywords (every keyword on a line, all file
+    -- types); the plugin's own highlighter is stopped after setup. These options still apply
+    -- to the plugin's search commands.
     highlight = {
-      -- markdown is highlighted by custom/todo_keywords instead: todo-comments only colours
-      -- one keyword per line, and with the greedy pattern below it is the last one
-      exclude = { "markdown" },
       -- highlight the prefixes anywhere, not only in comments
       comments_only = false,
       -- colour just the keyword, not the rest of the line (otherwise a whole table row lights up)
