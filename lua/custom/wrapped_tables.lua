@@ -983,14 +983,18 @@ end
 local HJKL = { h = "prev_cell", l = "next_cell", j = "next_row", k = "prev_row" }
 
 ---hjkl: move by cell/row while the lock is on and the cursor is on a table; otherwise the
----normal motion, counts preserved.
+---normal motion, counts preserved. h/l stop at the first/last cell; j/k leave the table at
+---its top/bottom edge, spending whatever is left of the count as plain line motions.
 function M.hjkl(key)
   return function()
     if M.locked and M.table_at(0, (cursor())) then
-      -- a count repeats the cell/row move and stops at the table edge
-      for _ = 1, vim.v.count1 do
+      local count = vim.v.count1
+      for n = 1, count do
         if not M[HJKL[key]]() then
-          break
+          if key == "j" or key == "k" then
+            vim.cmd.normal({ (count - n + 1) .. key, bang = true })
+          end
+          return
         end
       end
       return
