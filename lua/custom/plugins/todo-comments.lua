@@ -3,6 +3,16 @@
 --   SIZE: disagree with the credits   JV: needs JV's call
 -- <leader>st = [S]earch [T]odos. Each key opens the Telescope picker pre-filtered to one keyword set,
 -- searching from nvim's working directory (open nvim at the repo root for repo-wide results).
+-- <leader>n = [N]ote prefix. Same letters as <leader>st: types "KW: " at the cursor and leaves you in
+-- insert mode (appends when the cursor is on the last character of the line, inserts otherwise).
+local function starter(kw)
+  return function()
+    local col, last = vim.fn.col("."), vim.fn.col("$") - 1
+    local key = (last > 0 and col >= last) and "a" or "i"
+    vim.api.nvim_feedkeys(key .. kw .. ": ", "n", false)
+  end
+end
+
 return {
   "folke/todo-comments.nvim",
   event = "VimEnter",
@@ -22,6 +32,18 @@ return {
     { "<leader>stp", "<cmd>TodoTelescope keywords=PERF<cr>", desc = "[P]ERF" },
     { "<leader>stn", "<cmd>TodoTelescope keywords=NOTE<cr>", desc = "[N]OTE / INFO" },
     { "<leader>ste", "<cmd>TodoTelescope keywords=TEST<cr>", desc = "T[E]ST" },
+    -- note starters: type the prefix and drop into insert mode
+    { "<leader>nq", starter("Q"), desc = "[Q]: question for Claude" },
+    { "<leader>na", starter("ASK"), desc = "[A]SK: for the client" },
+    { "<leader>nf", starter("FIX"), desc = "[F]IX: data is wrong" },
+    { "<leader>ns", starter("SIZE"), desc = "[S]IZE: disagree with credits" },
+    { "<leader>nj", starter("JV"), desc = "[J]V: needs JV's call" },
+    { "<leader>no", starter("TODO"), desc = "T[O]DO" },
+    { "<leader>nh", starter("HACK"), desc = "[H]ACK" },
+    { "<leader>nw", starter("WARN"), desc = "[W]ARN" },
+    { "<leader>np", starter("PERF"), desc = "[P]ERF" },
+    { "<leader>nn", starter("NOTE"), desc = "[N]OTE" },
+    { "<leader>ne", starter("TEST"), desc = "T[E]ST" },
   },
   opts = {
     signs = false,
