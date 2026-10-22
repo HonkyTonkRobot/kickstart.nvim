@@ -52,6 +52,7 @@ return {
       ASK = { icon = "→ ", color = "hint" },
       SIZE = { icon = "# ", color = "warning" },
       JV = { icon = "J ", color = "jv" },
+      REFACTOR = { icon = " ", color = "hint" },
     },
     colors = {
       jv = { "DiagnosticError", "#e0af68" },
